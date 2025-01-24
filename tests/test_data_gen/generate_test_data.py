@@ -1,84 +1,123 @@
 import math
 import random
 import json
-from ortools.constraint_solver import pywrapcp, routing_enums
+
+# OR-Tools MIP solver
+from ortools.linear_solver import pywraplp
 
 def generate_random_points(n, x_range=(0, 100), y_range=(0, 100)):
     """
-    Generate n random 2D points in the ranges provided.
+    Generate n random 2D points within the given ranges.
     Returns a list of (x, y) tuples.
     """
     return [
-        (random.uniform(x_range[0], x_range[1]),
-         random.uniform(y_range[0], y_range[1]))
+        (
+            random.uniform(x_range[0], x_range[1]),
+            random.uniform(y_range[0], y_range[1])
+        )
         for _ in range(n)
     ]
 
 def build_distance_matrix(points):
     """
-    Given a list of 2D points, compute the pairwise distance matrix.
-    distance_matrix[i][j] = Euclidean distance between points[i] and points[j].
+    Given a list of 2D points, compute the pairwise distance matrix,
+    where distance_matrix[i][j] = Euclidean distance between points[i] and points[j].
     """
     n = len(points)
-    distance_matrix = [[0.0 for _ in range(n)] for _ in range(n)]
+    distance_matrix = [[0.0] * n for _ in range(n)]
     for i in range(n):
         for j in range(n):
             if i == j:
                 distance_matrix[i][j] = 0.0
             else:
-                distance_matrix[i][j] = math.dist(points[i], points[j])
+                dx = points[i][0] - points[j][0]
+                dy = points[i][1] - points[j][1]
+                distance_matrix[i][j] = math.hypot(dx, dy)
     return distance_matrix
 
-def solve_tsp_ortools(distance_matrix):
+def solve_tsp_exact(distance_matrix):
     """
-    Solve the TSP using OR-Tools and return the best route + minimal cost.
+    Solve the TSP exactly using a MIP formulation with OR-Tools.
+    Returns (route, cost), where:
+      - route is a list of node indices in visit order (starting from 0).
+      - cost is the total distance of that route.
 
-    Returns:
-      - A list of node indices representing the route (excluding the repeated start at the end).
-      - The total cost of that route.
+    This uses the classic Miller-Tucker-Zemlin (MTZ) constraints to avoid subtours.
     """
     n = len(distance_matrix)
-    manager = pywrapcp.RoutingIndexManager(n, 1, 0)  # 1 vehicle, start node = 0
-    routing = pywrapcp.RoutingModel(manager)
+    solver = pywraplp.Solver.CreateSolver("SCIP")  # or "CBC", "BOP", etc.
+    if not solver:
+        raise RuntimeError("Failed to create MIP solver. Ensure OR-Tools is installed correctly.")
 
-    def distance_callback(from_index, to_index):
-        # Convert routing variable Index to distance matrix node index.
-        from_node = manager.IndexToNode(from_index)
-        to_node = manager.IndexToNode(to_index)
-        return int(distance_matrix[from_node][to_node])  # OR-Tools demands int or long
+    # Create binary variables x[i,j]: 1 if we go directly from city i to city j, 0 otherwise.
+    x = {}
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                x[i, j] = solver.IntVar(0, 1, f"x_{i}_{j}")
+            else:
+                # Force x[i,i] = 0 with no real variable needed
+                # but let's just skip it to keep the dictionary simpler.
+                pass
 
-    transit_callback_index = routing.RegisterTransitCallback(distance_callback)
-    routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+    # Create the "u" variables for MTZ constraints (used to eliminate subtours).
+    # We only need them for nodes 1..n-1, but to simplify indexing we'll do 0..n-1.
+    # Each u[i] is in [0, n-1], integer.
+    u = []
+    for i in range(n):
+        u.append(solver.IntVar(0, n - 1, f"u_{i}"))
 
-    # We want to find a route that visits all nodes exactly once.
-    # Set search parameters
-    search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-    search_parameters.first_solution_strategy = (
-        routing_enums.FirstSolutionStrategy.PATH_CHEAPEST_ARC
-    )
-    # Use a more advanced strategy (or extended search) to get optimal solutions.
-    search_parameters.local_search_metaheuristic = (
-        routing_enums.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
-    )
-    search_parameters.time_limit.seconds = 30  # Increase if needed
-    search_parameters.log_search = False
+    # Objective: minimize sum of distance_matrix[i][j] * x[i,j]
+    objective = []
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                objective.append(distance_matrix[i][j] * x[i, j])
+    solver.Minimize(solver.Sum(objective))
 
-    solution = routing.SolveWithParameters(search_parameters)
-    if solution:
-        # Extract the route
-        index = routing.Start(0)
-        route = []
-        route_cost = 0
-        while not routing.IsEnd(index):
-            route.append(manager.IndexToNode(index))
-            next_index = solution.Value(routing.NextVar(index))
-            route_cost += distance_matrix[manager.IndexToNode(index)][manager.IndexToNode(next_index)]
-            index = next_index
+    # Constraint 1: Each city i has exactly one outgoing edge.
+    for i in range(n):
+        solver.Add(solver.Sum([x[i, j] for j in range(n) if j != i]) == 1)
 
-        # route_cost is a float. The route is the order in which nodes are visited (starting at 0).
-        return route, route_cost
-    else:
-        raise RuntimeError("No solution found by OR-Tools.")
+    # Constraint 2: Each city j has exactly one incoming edge.
+    for j in range(n):
+        solver.Add(solver.Sum([x[i, j] for i in range(n) if i != j]) == 1)
+
+    # MTZ constraint:  u[j] >= u[i] + 1 - n*(1 - x[i,j])  for i != j and i != j != 0
+    # Fix u[0] = 0 to define a root (start city).
+    solver.Add(u[0] == 0)
+    for i in range(1, n):
+        for j in range(1, n):
+            if i != j:
+                # u_j >= u_i + 1 - n*(1 - x[i,j])
+                solver.Add(u[j] >= u[i] + 1 - n * (1 - x[i, j]))
+
+    # Solve
+    status = solver.Solve()
+    if status not in (pywraplp.Solver.OPTIMAL,):
+        raise RuntimeError("No feasible TSP solution found within solver constraints or time limit.")
+
+    # Extract the solution route
+    # Start at node 0, follow x[0,?] = 1, then x[?,?], etc.
+    route = [0]
+    total_cost = 0.0
+    current_city = 0
+    for _ in range(n - 1):
+        # Find j where x[current_city,j] = 1
+        next_city = None
+        for j in range(n):
+            if j != current_city and x[current_city, j].solution_value() > 0.5:
+                next_city = j
+                break
+        if next_city is None:
+            raise RuntimeError("Unexpected error: No outgoing edge found from city %d" % current_city)
+        total_cost += distance_matrix[current_city][next_city]
+        route.append(next_city)
+        current_city = next_city
+    # Complete the cycle back to 0 for total cost
+    total_cost += distance_matrix[current_city][0]
+
+    return route, total_cost
 
 def create_edges_json(distance_matrix):
     """
@@ -92,61 +131,55 @@ def create_edges_json(distance_matrix):
             if i != j:
                 edges_list.append({
                     "cost": distance_matrix[i][j],
-                    "from": i,  # Or use a 64-bit ID scheme if you prefer
+                    "from": i,  # 64-bit ID if you prefer. For testing, int is fine.
                     "to": j
                 })
     return edges_list
 
-
 def generate_tsp_case(n):
     """
-    Generates a TSP case for n nodes:
-    - Creates random points
-    - Builds distance matrix
-    - Solves TSP
-    - Returns a dictionary with 'edges', 'path', 'num_nodes', and 'solution_cost'
+    Generates a TSP case with n nodes:
+      1. Creates random points
+      2. Builds distance matrix
+      3. Solves TSP EXACTLY using MIP + MTZ constraints
+      4. Returns a dictionary with 'edges', 'solution.path', 'solution.num_nodes', and 'solution.solution_cost'
     """
     points = generate_random_points(n)
     distance_matrix = build_distance_matrix(points)
-
-    route, route_cost = solve_tsp_ortools(distance_matrix)
+    route, route_cost = solve_tsp_exact(distance_matrix)
     edges_list = create_edges_json(distance_matrix)
 
-    # The solution path is an array of node IDs (64-bit ints are fine; here we just use int).
-    # The cost is a non-negative double.
-    tsp_case = {
+    return {
         "edges": edges_list,
         "solution": {
-            "path": route,
-            "num_nodes": len(route),
+            "path": route,           # list of node IDs in visitation order
+            "num_nodes": len(route), # should be n
             "solution_cost": route_cost
         }
     }
-    return tsp_case
-
 
 def main():
-    # Example: generate multiple TSP test cases of various sizes
     random.seed(123)  # for reproducibility
 
-    # You can adjust these sizes or just do a single N
-    sizes = [5, 7, 10]  # up to 25 if you like
-    all_cases = []
+    sizes = [5, 7, 10, 12, 15, 17, 20, 23, 25, 26, 27, 28, 29, 30]
 
+    all_cases = []
     for size in sizes:
+        print(f"Generating TSP case for N={size}...")
         case_data = generate_tsp_case(size)
+        print(f"Successfully generated TSP case for N={size}")
         all_cases.append({
-            "description": f"TSP instance with N={size}",
+            "description": f"Exact TSP instance with N={size}",
             "n": size,
             "edges": case_data["edges"],
             "solution": case_data["solution"]
         })
 
-    # Write out a JSON array of test cases
-    with open("tsp_test_cases.json", "w") as f:
-        json.dump(all_cases, f, indent=2)
+        # Write out a JSON array of test cases
+        with open("tsp_test_cases_exact.json", "w") as f:
+            json.dump(all_cases, f, indent=2)
 
-    print("Generated TSP test cases in 'tsp_test_cases.json'.")
+    print("Generated EXACT TSP test cases in 'tsp_test_cases_exact.json'.")
 
 if __name__ == "__main__":
     main()

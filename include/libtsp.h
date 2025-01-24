@@ -13,10 +13,15 @@
 
 typedef enum TSPResult {
     TSP_STATUS_SUCCESS = 0, /**< Operation completed successfully. */
-    TSP_STATUS_ERROR_INVALID_ARG, /**< Invalid argument provided. */
-    TSP_STATUS_NO_SOLUTION, /**< No solution found for the given input. */
-    TSP_STATUS_ERROR_INTERNAL /**< An internal error occurred. */
+    TSP_STATUS_ERROR_INVALID_GRAPH = 1, /**< The input graph is invalid. */
+    TSP_STATUS_ERROR_INVALID_ARG = 2, /**< Invalid argument provided. */
+    TSP_STATUS_NO_SOLUTION = 3, /**< No solution found for the given input. */
+    TSP_STATUS_OUT_OF_MEMORY = 4, /**< Out of memory. */
+    TSP_STATUS_ERROR_INTERNAL = 5 /**< An internal error occurred. */
+
 } TSPStatus;
+
+typedef float cost_t;
 
 /**
  * Represents a single edge in a TSP graph.
@@ -25,7 +30,7 @@ typedef struct TspInputGraphEdge {
     /**
      * The cost associated with the edge. Must be non-negative.
      */
-    double cost = 0.0;
+    cost_t cost = 0.0;
 
     /**
      * A unique 64-bit unsigned integer representing the identity of the node that the edge originates from.
@@ -67,7 +72,7 @@ typedef struct TspOutputGraphDescriptor {
     /**
      * The cost of the solution. Must be non-negative.
      */
-    double solution_cost{};
+    cost_t solution_cost{};
 } TspOutputGraphDescriptor;
 
 /**
