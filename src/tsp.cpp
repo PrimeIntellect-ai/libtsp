@@ -18,7 +18,7 @@
 #define PACKED(...) __pragma(pack(push, 1)) __VA_ARGS__ __pragma(pack(pop))
 #endif
 
-#define TSP_IS_DEBUG
+// #define TSP_IS_DEBUG
 
 /// Represents an index into the cost array where a particular node is located
 typedef std::ptrdiff_t node_cost_idx;
@@ -462,7 +462,7 @@ TSP_EXPORT TSPStatus tspSolveAsymmetric(const TspInputGraphDescriptor *graph,
 
     const std::unordered_set<nodeid_t> distinct_nodes = ::GetDistinctNodes(*graph);
     const auto &[cost_matrix, id_to_idx] = CostMatrix::CreateCostMatrix(*graph, distinct_nodes);
-    PrintCostMatrix(cost_matrix);
+    // PrintCostMatrix(cost_matrix);
 
     // remap nodes from id to cost idx
     std::unordered_set<node_cost_idx> remapped_nodes{};
@@ -526,7 +526,7 @@ TSP_EXPORT TSPStatus tspSolveAsymmetric(const TspInputGraphDescriptor *graph,
                 num_dirty_cost_computations++;
 
                 // prevent build-up of floating point errors
-                if (num_dirty_cost_computations > 2) {
+                if (num_dirty_cost_computations > 64) {
                     num_dirty_cost_computations = 0;
                     current_cost = ComputeTourCost(current_tour, cost_matrix);
                 }
@@ -613,7 +613,7 @@ TSP_EXPORT TSPStatus tspSolveAsymmetric(const TspInputGraphDescriptor *graph,
                 num_dirty_cost_computations++;
 
                 // prevent build-up of floating point errors
-                if (num_dirty_cost_computations > 2) {
+                if (num_dirty_cost_computations > 64) {
                     num_dirty_cost_computations = 0;
                     current_cost = ComputeTourCost(current_tour, cost_matrix);
                 }
