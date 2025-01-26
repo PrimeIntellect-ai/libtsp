@@ -56,7 +56,7 @@ TEST(TspSolverJsonTest, CompareCosts) {
 
         // Solve using tsp_solve
         TspOutputGraphDescriptor output_desc{};
-        TspSolverOptionsDescriptor solver_options{};
+        TspSolverOptionsDescriptor solver_options{.num_iterations = 1000};
         TSPStatus status = tspSolveAsymmetric(&input_desc,  &solver_options, &output_desc);
         EXPECT_EQ(status, TSP_STATUS_SUCCESS) << "Solver did not return SUCCESS for instance: " << description;
 
@@ -97,9 +97,8 @@ TEST(TspSolverJsonTest, CompareCosts) {
             EXPECT_NEAR(pathCost, output_desc.solution_cost, 1e-6) << "Path cost mismatch for instance: " << description;
         }
 
-
-        // assert that the cost is within 30% of the known-good solution
-        // EXPECT_NEAR(outputDesc.solution_cost, knownCost, 0.3 * knownCost) << "Cost mismatch for instance: " << description;
+        // assert that the cost is within 10% of the known-good solution
+        EXPECT_NEAR(output_desc.solution_cost, solution_cost, 0.1 * solution_cost) << "Cost mismatch for instance: " << description;
 
         // Cleanup
         delete[] input_desc.edges;

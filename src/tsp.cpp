@@ -352,7 +352,11 @@ struct [[maybe_unused]] std::hash<two_opt_tabu_t> {
 template<>
 struct [[maybe_unused]] std::hash<three_opt_tabu_t> {
     std::size_t operator()(const three_opt_tabu_t &move) const noexcept {
-        return std::hash<nodeid_t>{}(move.a) ^ std::hash<nodeid_t>{}(move.b) ^ std::hash<nodeid_t>{}(move.c);
+        std::size_t h = 0;
+        h ^= std::hash<nodeid_t>{}(move.a) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        h ^= std::hash<nodeid_t>{}(move.b) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        h ^= std::hash<nodeid_t>{}(move.c) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        return h;
     }
 };
 
@@ -376,70 +380,68 @@ namespace {
                    : node_tour_idx_pair_t{tour[seg_start], tour[seg_end]};
     }
 
-    [[nodiscard]] cost_t ComputeThreeOptMoveDelta(const std::vector<node_cost_idx> &tour,
-                                                  const CostMatrix &cost_matrix,
-                                                  const node_tour_idx i, const node_tour_idx j, const node_tour_idx k,
-                                                  const bool reverse_states[3]) {
+    [[nodiscard]] cost_t ComputeThreeOptMoveDelta(
+        const std::vector<node_cost_idx> &tour,
+        const CostMatrix &cost_matrix,
+        const node_tour_idx i,
+        const node_tour_idx j,
+        const node_tour_idx k,
+        const bool reverse_states[3]
+    ) {
         const size_t n = tour.size();
-        cost_t old_sum = 0;
-        cost_t new_sum = 0;
 
-        // --- Step A: remove E1, E2, E3 (the boundary edges) ---
-        old_sum += cost_matrix.get_cost(tour[i], tour[i + 1]);
-        old_sum += cost_matrix.get_cost(tour[j], tour[j + 1]);
-        old_sum += cost_matrix.get_cost(tour[k], tour[(k + 1) % n]);
+        // --- 1) Measure the OLD cost of the entire tour. ---
+        cost_t old_cost = 0.0;
+        for (size_t idx = 0; idx < n; ++idx) {
+            const node_cost_idx from_id = tour[idx];
+            const node_cost_idx to_id = tour[(idx + 1) % n];
+            old_cost += cost_matrix.get_cost(from_id, to_id);
+        }
 
-        // Remove any arcs inside segments S1, S2 & S3 that if reversed
+        // --- 2) Make a scratch copy and APPLY the same flips. ---
+        static std::vector<node_cost_idx> new_tour{};
+        new_tour = tour;
+
+        // Use the same logic as ApplyThreeOptMove
         if (reverse_states[0]) {
-            for (node_tour_idx x = i + 1; x < j; ++x) {
-                old_sum += cost_matrix.get_cost(tour[x], tour[x + 1]);
-            }
+            std::reverse(new_tour.begin() + i + 1, new_tour.begin() + j + 1);
         }
         if (reverse_states[1]) {
-            for (node_tour_idx x = j + 1; x < k; ++x) {
-                old_sum += cost_matrix.get_cost(tour[x], tour[x + 1]);
-            }
+            std::reverse(new_tour.begin() + j + 1, new_tour.begin() + k + 1);
         }
         if (reverse_states[2]) {
-            for (node_tour_idx x = k + 1; x < i + n; ++x) {
-                old_sum += cost_matrix.get_cost(tour[x % n], tour[(x + 1) % n]);
-            }
+            std::reverse(new_tour.begin() + k + 1, new_tour.end());
+            std::reverse(new_tour.begin(), new_tour.begin() + i + 1);
         }
 
-        // --- Step B: add edges for the new arrangement ---
-
-        // compute the index of the respective segment start and end point as if we had
-        // actually in-place reversed them into the array.
-        const auto &[s1_start, s1_end] = Get3OptSegmentEndpoint(tour, i + 1, j, reverse_states[0]);
-        const auto &[s2_start, s2_end] = Get3OptSegmentEndpoint(tour, j + 1, k, reverse_states[1]);
-        const auto &[s3_start, s3_end] = Get3OptSegmentEndpoint(tour, k + 1, i, reverse_states[2]);
-
-        // add bridge edges
-        new_sum += cost_matrix.get_cost(tour[i], s1_start);
-        new_sum += cost_matrix.get_cost(s1_end, s2_start);
-        new_sum += cost_matrix.get_cost(s2_end, s3_start);
-        new_sum += cost_matrix.get_cost(s3_end, tour[(k + 1) % n]);
-
-        // Add any arcs inside segments S1, S2 & S3 that if reversed
-        if (reverse_states[0]) {
-            for (node_tour_idx x = i + 1; x < j; ++x) {
-                new_sum += cost_matrix.get_cost(tour[x + 1], tour[x]);
-            }
+        // --- 3) Measure the NEW cost of the rearranged tour. ---
+        cost_t new_cost = 0.0;
+        for (size_t idx = 0; idx < n; ++idx) {
+            const node_cost_idx from_id = new_tour[idx];
+            const node_cost_idx to_id = new_tour[(idx + 1) % n];
+            new_cost += cost_matrix.get_cost(from_id, to_id);
         }
-        if (reverse_states[1]) {
-            for (node_tour_idx x = j + 1; x < k; ++x) {
-                new_sum += cost_matrix.get_cost(tour[x + 1], tour[x]);
-            }
-        }
-        if (reverse_states[2]) {
-            for (node_tour_idx x = k + 1; x < i + n; ++x) {
-                new_sum += cost_matrix.get_cost(tour[(x + 1) % n], tour[x % n]);
-            }
-        }
-        return new_sum - old_sum;
+
+        // --- 4) The delta is the difference. ---
+        return new_cost - old_cost;
     }
 
     void ApplyThreeOptMove(std::vector<node_cost_idx> &tour, const three_opt_t &move) {
+        const node_tour_idx i = move.i;
+        const node_tour_idx j = move.j;
+        const node_tour_idx k = move.k;
+
+        // reverse the segments if necessary
+        if (move.reverse_states[0]) {
+            std::reverse(tour.begin() + i + 1, tour.begin() + j + 1);
+        }
+        if (move.reverse_states[1]) {
+            std::reverse(tour.begin() + j + 1, tour.begin() + k + 1);
+        }
+        if (move.reverse_states[2]) {
+            std::reverse(tour.begin() + k + 1, tour.end());
+            std::reverse(tour.begin(), tour.begin() + i + 1);
+        }
     }
 } // end anonymous namespace
 
@@ -473,6 +475,13 @@ TSP_EXPORT TSPStatus tspSolveAsymmetric(const TspInputGraphDescriptor *graph,
     std::vector<node_cost_idx> current_tour = ::GenerateRandomTour(remapped_nodes, seed);
 
     cost_t current_cost = ComputeTourCost(current_tour, cost_matrix);
+
+    // The number of times we updated our current best cost via deltas since
+    // last force re-computation given the current tour.
+    // We deliberately don't recompute the cost every time we apply a move,
+    // however after a set number of moves we will recompute the cost to ensure
+    // that floating point errors do not accumulate.
+    size_t num_dirty_cost_computations = 0;
 
     std::vector<node_cost_idx> best_tour = current_tour;
     cost_t best_cost = current_cost;
@@ -514,6 +523,18 @@ TSP_EXPORT TSPStatus tspSolveAsymmetric(const TspInputGraphDescriptor *graph,
 #endif
                 ::ApplyTwoOptMove(current_tour, best_move);
                 current_cost += best_delta;
+                num_dirty_cost_computations++;
+
+                // prevent build-up of floating point errors
+                if (num_dirty_cost_computations > 2) {
+                    num_dirty_cost_computations = 0;
+                    current_cost = ComputeTourCost(current_tour, cost_matrix);
+                }
+#ifdef TSP_IS_DEBUG
+                cost_t expected_cost = ComputeTourCost(current_tour, cost_matrix);
+                assert(fabs(current_cost - expected_cost) < 1e-3);
+#endif
+
                 if (current_cost < best_cost) {
                     best_tour = current_tour;
                     best_cost = current_cost;
@@ -589,6 +610,18 @@ TSP_EXPORT TSPStatus tspSolveAsymmetric(const TspInputGraphDescriptor *graph,
 #endif
                 ::ApplyThreeOptMove(current_tour, best_move);
                 current_cost += best_delta;
+                num_dirty_cost_computations++;
+
+                // prevent build-up of floating point errors
+                if (num_dirty_cost_computations > 2) {
+                    num_dirty_cost_computations = 0;
+                    current_cost = ComputeTourCost(current_tour, cost_matrix);
+                }
+#ifdef TSP_IS_DEBUG
+                cost_t expected_cost = ComputeTourCost(current_tour, cost_matrix);
+                assert(fabs(current_cost - expected_cost) < 1e-3);
+#endif
+
                 if (current_cost < best_cost) {
                     best_tour = current_tour;
                     best_cost = current_cost;
