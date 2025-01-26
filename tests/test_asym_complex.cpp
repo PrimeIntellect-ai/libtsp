@@ -17,8 +17,8 @@
 TEST(TspSolverJsonTest, CompareCosts) {
     using nlohmann::json;
 
-    std::ifstream inFile("test_data_gen_sym/tsp_test_cases_exact.json");
-    ASSERT_TRUE(inFile.is_open()) << "Could not open test_data_gen/tsp_test_cases_exact.json for reading.";
+    std::ifstream inFile("test_data_gen_asym/atsp_test_cases_exact.json");
+    ASSERT_TRUE(inFile.is_open()) << "Could not open test_data_gen_asym/atsp_test_cases_exact.json for reading.";
 
     json testData;
     inFile >> testData;

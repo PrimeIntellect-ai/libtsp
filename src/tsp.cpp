@@ -140,7 +140,7 @@ namespace {
         const auto printHeader = [&cost_matrix] {
             std::cout << "+";
             for (size_t i = 0; i < cost_matrix.num_nodes; ++i) {
-                std::cout << "-----"; // allow 4 chars per number
+                std::cout << "------"; // allow 5 chars per number
             }
             std::cout << "+" << std::endl;
         };
@@ -148,7 +148,8 @@ namespace {
         for (node_cost_idx i = 0; i < cost_matrix.num_nodes; ++i) {
             std::cout << "|";
             for (node_cost_idx j = 0; j < cost_matrix.num_nodes; ++j) {
-                std::cout << std::setw(4) << cost_matrix.get_cost(i, j) << " ";
+                // fix total width to 5 chars
+                std::cout << std::fixed << std::setprecision(1) << std::setw(5) << cost_matrix.get_cost(i, j) << " ";
             }
             std::cout << "|" << std::endl;
         }

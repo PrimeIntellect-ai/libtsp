@@ -97,8 +97,8 @@ TEST(TspSolverJsonTest, CompareCosts) {
         }
 
 
-        // assert that the cost is within 30% of the known-good solution
-        EXPECT_NEAR(outputDesc.solution_cost, knownCost, 0.3 * knownCost) << "Cost mismatch for instance: " << description;
+        // assert that the cost is within 15% of the known-good solution
+        EXPECT_NEAR(outputDesc.solution_cost, knownCost, 0.15 * knownCost) << "Cost mismatch for instance: " << description;
 
         // Cleanup
         delete[] inputDesc.edges;
