@@ -1,7 +1,13 @@
-add_executable(test_basic test_basic.cpp)
-target_link_libraries(test_basic PRIVATE tsp gtest_main)
+add_executable(test_sym_basic test_sym_basic.cpp)
+target_link_libraries(test_sym_basic PRIVATE tsp gtest_main)
 
-add_executable(test_complex test_complex.cpp)
-target_link_libraries(test_complex PRIVATE tsp gtest_main)
+add_executable(test_sym_complex test_sym_complex.cpp)
+target_link_libraries(test_sym_complex PRIVATE tsp gtest_main)
 
-add_subdirectory(test_data_gen)
+add_executable(test_asym_basic test_asym_basic.cpp)
+target_link_libraries(test_asym_basic PRIVATE tsp gtest_main)
+
+add_executable(test_asym_complex test_asym_complex.cpp)
+target_link_libraries(test_asym_complex PRIVATE tsp gtest_main)
+
+add_subdirectory(test_data_gen_sym)

@@ -42,8 +42,8 @@ static void freeGraph(TspInputGraphDescriptor& desc) {
 }
 
 static void freeOutput(TspOutputGraphDescriptor& output) {
-    delete[] output.path;
-    output.path = nullptr;
+    delete[] output.tour;
+    output.tour = nullptr;
     output.num_nodes = 0;
     output.solution_cost = 0.0;
 }
@@ -59,7 +59,7 @@ int main() {
             TspOutputGraphDescriptor outputDesc{};
 
             auto start = std::chrono::steady_clock::now();
-            if (const TSPStatus status = tsp_solve(&graph, &outputDesc); status != TSP_STATUS_SUCCESS) {
+            if (const TSPStatus status = tspSolveSymmetric(&graph, {}, &outputDesc); status != TSP_STATUS_SUCCESS) {
                 std::cerr << "Error: tsp_solve returned status " << status << std::endl;
                 freeOutput(outputDesc);
                 freeGraph(graph);

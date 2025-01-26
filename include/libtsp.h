@@ -15,13 +15,12 @@ typedef enum TSPResult {
     TSP_STATUS_SUCCESS = 0, /**< Operation completed successfully. */
     TSP_STATUS_ERROR_INVALID_GRAPH = 1, /**< The input graph is invalid. */
     TSP_STATUS_ERROR_INVALID_ARG = 2, /**< Invalid argument provided. */
-    TSP_STATUS_NO_SOLUTION = 3, /**< No solution found for the given input. */
-    TSP_STATUS_OUT_OF_MEMORY = 4, /**< Out of memory. */
-    TSP_STATUS_ERROR_INTERNAL = 5 /**< An internal error occurred. */
-
+    TSP_STATUS_OUT_OF_MEMORY = 3, /**< Out of memory. */
+    TSP_STATUS_ERROR_INTERNAL = 4 /**< An internal error occurred. */
 } TSPStatus;
 
 typedef float cost_t;
+typedef uint64_t nodeid_t;
 
 /**
  * Represents a single edge in a TSP graph.
@@ -35,12 +34,12 @@ typedef struct TspInputGraphEdge {
     /**
      * A unique 64-bit unsigned integer representing the identity of the node that the edge originates from.
      */
-    uint64_t from = 0;
+    nodeid_t from = 0;
 
     /**
      * A unique 64-bit unsigned integer representing the identity of the node that the edge leads to.
      */
-    uint64_t to = 0;
+    nodeid_t to = 0;
 } TspInputGraphEdge;
 
 /**
@@ -62,7 +61,7 @@ typedef struct TspOutputGraphDescriptor {
     /**
      * The path that represents the solution to the TSP problem. The path is represented as an array of node IDs.
      */
-    uint64_t *path{};
+    nodeid_t *tour{};
 
     /**
      * The number of elements in the path array.
@@ -75,10 +74,43 @@ typedef struct TspOutputGraphDescriptor {
     cost_t solution_cost{};
 } TspOutputGraphDescriptor;
 
+typedef struct TspSolverConfigurationDescriptor {
+    /**
+     * The seed for the random number generator.
+     */
+    uint64_t seed{};
+
+    /**
+     * The number of iterations to run the solver for.
+     */
+    uint64_t num_iterations = 1000;
+
+    /**
+     * The number of iterations that tabu records are retained.
+     * After this number of iterations, an applicable move will be allowed again for consideration.
+     */
+    uint32_t tabu_tenure = 10;
+
+} TspSolverOptionsDescriptor;
+
 /**
- * Solves the TSP problem for the given graph. The solution may not be optimal for large n.
+ * Solves the asymmetrical TSP problem for the given graph. The solution may not be optimal for large n.
+ * For the asymmetric TSP, there may be two edges between a pair of nodes, one in each direction (meaning to and from switched), with potentially different costs.
  * @param graph the input graph
- * @param output_descriptor the output descriptor to write the solution to
+ * @param solver_options options to configure the solver
+ * @param output_descriptor the output descriptor to write the solution to; The user is responsible for freeing the path array.
  * @return the result status of the operation
  */
-TSP_EXPORT TSPStatus tsp_solve(const TspInputGraphDescriptor *graph, TspOutputGraphDescriptor *output_descriptor);
+TSP_EXPORT TSPStatus tspSolveAsymmetric(const TspInputGraphDescriptor *graph,
+                                        const TspSolverOptionsDescriptor *solver_options,
+                                        TspOutputGraphDescriptor *output_descriptor);
+
+/**
+ * Solves the symmetrical TSP problem for the given graph. The solution may not be optimal for large n.
+ * @param graph the input graph
+ * @param solver_options options to configure the solver
+ * @param output_descriptor the output descriptor to write the solution to; The user is responsible for freeing the path array.
+ * @return the result status of the operation
+ */
+TSP_EXPORT TSPStatus tspSolveSymmetric(const TspInputGraphDescriptor *graph, const TspSolverOptionsDescriptor *
+                                       solver_options, TspOutputGraphDescriptor *output_descriptor);

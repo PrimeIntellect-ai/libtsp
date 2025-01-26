@@ -28,8 +28,8 @@ static void freeGraph(TspInputGraphDescriptor &desc) {
 
 // Helper function to free the path array allocated by tsp_solve.
 static void freeOutput(TspOutputGraphDescriptor &output) {
-    delete[] output.path;
-    output.path = nullptr;
+    delete[] output.tour;
+    output.tour = nullptr;
     output.num_nodes = 0;
     output.solution_cost = 0.0;
 }
@@ -39,11 +39,13 @@ static void freeOutput(TspOutputGraphDescriptor &output) {
 
 TEST(TspSolverTest, NullArguments) {
     // With null pointers, we should get TSP_STATUS_ERROR_INVALID_ARG.
-    EXPECT_EQ(tsp_solve(nullptr, nullptr), TSP_STATUS_ERROR_INVALID_ARG);
+    EXPECT_EQ(tspSolveAsymmetric(nullptr, nullptr, nullptr), TSP_STATUS_ERROR_INVALID_ARG);
 
-    // Output is valid, but input is null
     TspOutputGraphDescriptor outputDesc{};
-    EXPECT_EQ(tsp_solve(nullptr, &outputDesc), TSP_STATUS_ERROR_INVALID_ARG);
+    EXPECT_EQ(tspSolveAsymmetric(nullptr, nullptr, &outputDesc), TSP_STATUS_ERROR_INVALID_ARG);
+
+    constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
+    EXPECT_EQ(tspSolveAsymmetric(nullptr, &optionsDesc, nullptr), TSP_STATUS_ERROR_INVALID_ARG);
 }
 
 TEST(TspSolverTest, EmptyEdges) {
@@ -53,36 +55,19 @@ TEST(TspSolverTest, EmptyEdges) {
     graph.num_edges = 0;
 
     TspOutputGraphDescriptor outputDesc{};
-    EXPECT_EQ(tsp_solve(&graph, &outputDesc), TSP_STATUS_ERROR_INVALID_ARG);
-}
-
-TEST(TspSolverTest, SingleNodeTrivial) {
-    // Graph with a single node but no edges -> TSP is trivial with cost = 0
-    // We'll represent it as an edge from the node to itself with cost=0 just to define the node.
-    const auto inputEdges = std::vector<std::tuple<uint64_t, uint64_t, double>>{
-        {42, 42, 0.0}
-    };
-    TspInputGraphDescriptor graph = createGraph(inputEdges);
-
-    TspOutputGraphDescriptor outputDesc{};
-    EXPECT_EQ(tsp_solve(&graph, &outputDesc), TSP_STATUS_SUCCESS);
-    EXPECT_EQ(outputDesc.num_nodes, static_cast<size_t>(1));
-    EXPECT_EQ(outputDesc.path[0], static_cast<uint64_t>(42));
-    EXPECT_DOUBLE_EQ(outputDesc.solution_cost, 0.0);
-
-    freeOutput(outputDesc);
-    freeGraph(graph);
+    constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
+    EXPECT_EQ(tspSolveAsymmetric(&graph, &optionsDesc, &outputDesc), TSP_STATUS_ERROR_INVALID_ARG);
 }
 
 TEST(TspSolverTest, NegativeCostEdge) {
-    // Including a negative cost edge should result in TSP_STATUS_ERROR_INVALID_ARG.
+    // Including a negative cost edge should result in TSP_STATUS_ERROR_INVALID_GRAPH.
     const auto inputEdges = std::vector<std::tuple<uint64_t, uint64_t, double>>{
         {1, 2, -1.0}
     };
     TspInputGraphDescriptor graph = createGraph(inputEdges);
     TspOutputGraphDescriptor outputDesc{};
-
-    EXPECT_EQ(tsp_solve(&graph, &outputDesc), TSP_STATUS_ERROR_INVALID_ARG);
+    constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
+    EXPECT_EQ(tspSolveAsymmetric(&graph, &optionsDesc, &outputDesc), TSP_STATUS_ERROR_INVALID_GRAPH);
 
     freeOutput(outputDesc);
     freeGraph(graph);
@@ -95,8 +80,8 @@ TEST(TspSolverTest, TwoNodesNoReturn) {
     };
     TspInputGraphDescriptor graph = createGraph(inputEdges);
     TspOutputGraphDescriptor outputDesc{};
-
-    EXPECT_EQ(tsp_solve(&graph, &outputDesc), TSP_STATUS_NO_SOLUTION);
+    constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
+    EXPECT_EQ(tspSolveAsymmetric(&graph, &optionsDesc, &outputDesc), TSP_STATUS_ERROR_INVALID_GRAPH);
 
     freeOutput(outputDesc);
     freeGraph(graph);
@@ -110,9 +95,9 @@ TEST(TspSolverTest, TwoNodesRoundTrip) {
     };
     TspInputGraphDescriptor graph = createGraph(inputEdges);
     TspOutputGraphDescriptor outputDesc{};
-
-    EXPECT_EQ(tsp_solve(&graph, &outputDesc), TSP_STATUS_SUCCESS);
-    ASSERT_EQ(outputDesc.num_nodes, static_cast<size_t>(3));
+    constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
+    EXPECT_EQ(tspSolveAsymmetric(&graph, &optionsDesc, &outputDesc), TSP_STATUS_SUCCESS);
+    ASSERT_EQ(outputDesc.num_nodes, static_cast<size_t>(2));
     EXPECT_DOUBLE_EQ(outputDesc.solution_cost, 20.0);
 
     freeOutput(outputDesc);
@@ -127,8 +112,8 @@ TEST(TspSolverTest, DisconnectedThreeNodes) {
     };
     TspInputGraphDescriptor graph = createGraph(inputEdges);
     TspOutputGraphDescriptor outputDesc{};
-
-    EXPECT_EQ(tsp_solve(&graph, &outputDesc), TSP_STATUS_NO_SOLUTION);
+    constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
+    EXPECT_EQ(tspSolveAsymmetric(&graph, &optionsDesc, &outputDesc), TSP_STATUS_ERROR_INVALID_GRAPH);
 
     freeOutput(outputDesc);
     freeGraph(graph);
@@ -152,8 +137,8 @@ TEST(TspSolverTest, ThreeNodesFull) {
     };
     TspInputGraphDescriptor graph = createGraph(inputEdges);
     TspOutputGraphDescriptor outputDesc{};
-
-    EXPECT_EQ(tsp_solve(&graph, &outputDesc), TSP_STATUS_SUCCESS);
+    constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
+    EXPECT_EQ(tspSolveAsymmetric(&graph, &optionsDesc, &outputDesc), TSP_STATUS_SUCCESS);
     EXPECT_NEAR(outputDesc.solution_cost, 6.0, 1e-9);
 
     freeOutput(outputDesc);
@@ -169,10 +154,10 @@ TEST(TspSolverTest, DuplicateEdges) {
     };
     TspInputGraphDescriptor graph = createGraph(inputEdges);
     TspOutputGraphDescriptor outputDesc{};
+    constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
+    EXPECT_EQ(tspSolveAsymmetric(&graph, &optionsDesc, &outputDesc), TSP_STATUS_ERROR_INVALID_GRAPH);
 
-    EXPECT_EQ(tsp_solve(&graph, &outputDesc), TSP_STATUS_ERROR_INVALID_GRAPH);
-
-    if (outputDesc.path) {
+    if (outputDesc.tour) {
         freeOutput(outputDesc);
     }
     freeGraph(graph);
@@ -188,8 +173,8 @@ TEST(TspSolverTest, LargerNoSolution) {
     };
     TspInputGraphDescriptor graph = createGraph(inputEdges);
     TspOutputGraphDescriptor outputDesc{};
-
-    EXPECT_EQ(tsp_solve(&graph, &outputDesc), TSP_STATUS_NO_SOLUTION);
+    constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
+    EXPECT_EQ(tspSolveAsymmetric(&graph, &optionsDesc, &outputDesc), TSP_STATUS_ERROR_INVALID_GRAPH);
 
     freeOutput(outputDesc);
     freeGraph(graph);
@@ -211,7 +196,8 @@ TEST(TspSolverTest, FourNodeExample) {
     TspInputGraphDescriptor graph = createGraph(inputEdges);
     TspOutputGraphDescriptor outputDesc{};
 
-    EXPECT_EQ(tsp_solve(&graph, &outputDesc), TSP_STATUS_SUCCESS);
+    constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
+    EXPECT_EQ(tspSolveAsymmetric(&graph, &optionsDesc, &outputDesc), TSP_STATUS_SUCCESS);
     EXPECT_NEAR(outputDesc.solution_cost, 4.0, 1e-9);
 
     freeOutput(outputDesc);
