@@ -1,9 +1,11 @@
 #include "libtsp.h"
 
 #include <memory>
+#include <algorithm>
 #include <cassert>
 #include <iomanip>
 #include <random>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 #include <iostream>
