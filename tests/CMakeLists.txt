@@ -1,5 +1,7 @@
-add_executable(test_asym_basic test_asym_basic.cpp)
-target_link_libraries(test_asym_basic PRIVATE tsp gtest_main)
+add_sanitized_gtest(test_asym_basic test_asym_basic.cpp)
+target_link_libraries(test_asym_basic PRIVATE tsp)
 
-add_executable(test_asym_complex test_asym_complex.cpp)
-target_link_libraries(test_asym_complex PRIVATE tsp gtest_main)
+add_sanitized_gtest(test_asym_complex test_asym_complex.cpp)
+target_link_libraries(test_asym_complex PRIVATE tsp)
+
+add_subdirectory(test_data_gen_asym)

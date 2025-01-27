@@ -59,7 +59,7 @@ int main() {
             TspSolutionDescriptor outputDesc{};
 
             auto start = std::chrono::steady_clock::now();
-            if (const TSPStatus status = tspSolveSymmetric(&graph, {}, &outputDesc); status != TSP_STATUS_SUCCESS) {
+            if (const TSPStatus status = tspAsymmetricSolve(&graph, {}, &outputDesc); status != TSP_STATUS_SUCCESS) {
                 std::cerr << "Error: tsp_solve returned status " << status << std::endl;
                 freeOutput(outputDesc);
                 freeGraph(graph);

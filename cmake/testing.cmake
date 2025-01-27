@@ -1,0 +1,25 @@
+option(SANITIZE_TESTS "Enable address sanitizer for tests" OFF)
+
+if (DEFINED $ENV{IS_CI})
+    message(STATUS "Running in CI, enabling sanitizers in tests")
+    set(SANITIZE_TESTS ON)
+endif ()
+
+function(add_sanitized_gtest target_name test_file)
+    add_executable(${target_name} ${test_file})
+    target_link_libraries(${target_name} PRIVATE gtest_main)
+    add_test(NAME ${target_name} COMMAND ${target_name})
+
+    # sanitized test
+    if (SANITIZE_TESTS)
+        if (WIN32)
+            message(STATUS "Sanitizer is not supported on Windows")
+        elseif (APPLE)
+            target_link_options(${target_name} PRIVATE -fsanitize=address -fsanitize=undefined)
+            target_compile_options(${target_name} PRIVATE -fsanitize=address -fsanitize=undefined)
+        else ()
+            target_link_options(${target_name} PRIVATE -fsanitize=address -fsanitize=leak -fsanitize=undefined)
+            target_compile_options(${target_name} PRIVATE -fsanitize=address -fsanitize=leak -fsanitize=undefined)
+        endif ()
+    endif ()
+endfunction()
