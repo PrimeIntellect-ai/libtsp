@@ -14,9 +14,22 @@ The following example showcases the libtsp api:
         .edges = edges,
         .num_edges = 2
     };
-    TspSolutionDescriptor outputDesc{};
-    constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
-    tspAsymmetricSolve(&graph, &optionsDesc, &outputDesc);
+    TspSolutionDescriptor output_desc{};
+    constexpr TspSolverOptionsDescriptor options_desc{.seed = 42, .num_iterations = 100};
+    if (tspAsymmetricSolve(&graph, &options_desc, &output_desc) != TSP_STATUS_SUCCESS) {
+        std::cerr << "Failed to solve ATSP!" << std::endl;
+        return;
+    }
+    if (output_desc.solution_type == TSP_SOLUTION_TYPE_OPTIMAL) {
+        std::cout << "Solution with cost " << output_desc.solution_cost << " is optimal.";
+    }
+
+    // print solution tour
+    std::cout << "Solution tour: ";
+    for (size_t i = 0; i < output_desc.num_nodes; i++) {
+        std::cout << output_desc.tour[i] << " ";
+    }
+    std::cout << std::endl;
 ```
 
 ## Prerequisites
