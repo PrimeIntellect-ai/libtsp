@@ -312,7 +312,6 @@ namespace {
 } // end anonymous namespace
 
 namespace {
-
     /// Describes a two-opt move
     struct two_opt_t {
         node_tour_idx i = -1;
@@ -684,7 +683,19 @@ TSPStatus tspAsymmetricImproveSolutionHeuristic(const TspInputGraphDescriptor *g
     for (size_t restart = 0; restart < num_restarts; restart++) {
         std::vector<node_cost_idx> current_tour;
         cost_t current_cost;
-        switch (solver_options->initial_heuristic) {
+        TspInitialHeuristic chosen_heuristic = solver_options->initial_heuristic;
+        if (chosen_heuristic == TSP_INIT_RANDOM_STRATEGY) {
+            std::mt19937_64 rng(seed);
+            TspInitialHeuristic available_heuristics[] = {
+                TSP_INIT_RANDOM,
+                TSP_INIT_NEAREST_NEIGHBOR,
+                TSP_INIT_ANT_COLONY_OPTIMIZATION,
+            };
+            std::uniform_int_distribution<size_t> dist(0, 2);
+            chosen_heuristic = available_heuristics[dist(rng)];
+            seed = rng();
+        }
+        switch (chosen_heuristic) {
             case TSP_INIT_RANDOM: {
                 current_tour = ::GenerateRandomTour(remapped_nodes, seed);
                 current_cost = ComputeTourCost(current_tour, cost_matrix);

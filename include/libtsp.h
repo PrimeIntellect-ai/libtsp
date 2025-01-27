@@ -113,10 +113,31 @@ typedef struct TspSolutionDescriptor {
  * A simple enum for choosing the initial-constructive heuristic.
  */
 typedef enum TspInitialHeuristic {
+
+    /**
+     * Uses a random initial solution.
+     */
     TSP_INIT_RANDOM = 0,
+
+    /**
+     * Uses the nearest neighbor heuristic to initialize the solution.
+     */
     TSP_INIT_NEAREST_NEIGHBOR = 1,
+
+    /**
+     * Uses ant colony optimization to initialize the solution.
+     */
     TSP_INIT_ANT_COLONY_OPTIMIZATION = 2,
-    TSP_INIT_CHOOSE_BEST_INITIAL_SCORE = 3
+
+    /**
+     * Chooses the strategy that results in the best initial score.
+     */
+    TSP_INIT_CHOOSE_BEST_INITIAL_SCORE = 3,
+
+    /**
+     * Will initialize the solution using a random strategy (nearest neighbor, ant colony optimization, or random with equal probability).
+     */
+    TSP_INIT_RANDOM_STRATEGY = 4
 } TspInitialHeuristic;
 
 /**

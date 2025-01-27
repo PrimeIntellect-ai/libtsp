@@ -56,7 +56,11 @@ TEST(TspSolverJsonTest, CompareCosts) {
 
         // Solve using tsp_solve
         TspSolutionDescriptor output_desc{};
-        TspSolverOptionsDescriptor solver_options{.seed = 0, .num_iterations = 100};
+        TspSolverOptionsDescriptor solver_options{
+            .seed = 42, .num_iterations = 100,
+            .num_restarts = 4,
+            .initial_heuristic = TSP_INIT_RANDOM_STRATEGY
+        };
 
         auto start = std::chrono::high_resolution_clock::now();
         TSPStatus status = tspAsymmetricSolve(&input_desc, &solver_options, &output_desc);
@@ -106,7 +110,8 @@ TEST(TspSolverJsonTest, CompareCosts) {
         EXPECT_NEAR(output_desc.solution_cost, solution_cost, 0.05 * solution_cost) << "Cost mismatch for instance: " <<
  description;
 
-        std::cout << "Solved \"" << description << "\" with error: " << std::abs(output_desc.solution_cost - solution_cost) << " ("
+        std::cout << "Solved \"" << description << "\" with error: " << std::abs(
+                    output_desc.solution_cost - solution_cost) << " ("
                 << std::fixed << std::setprecision(2) <<
                 std::abs(output_desc.solution_cost - solution_cost) / solution_cost * 100 << "%)" << " in "
                 << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
