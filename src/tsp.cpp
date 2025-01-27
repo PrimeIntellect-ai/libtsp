@@ -36,19 +36,6 @@ namespace {
     // define COST_INFINITY
     constexpr cost_t COST_POSITIVE_INFINITY = std::numeric_limits<cost_t>::infinity();
 
-    [[nodiscard]] std::vector<node_cost_idx>
-    GenerateRandomTour(const std::unordered_set<node_cost_idx> &remapped_nodes, uint64_t &seed) {
-        std::vector<node_cost_idx> tour{};
-        tour.reserve(remapped_nodes.size());
-        for (const auto node: remapped_nodes) {
-            tour.push_back(node);
-        }
-        std::mt19937_64 rng(seed);
-        std::ranges::shuffle(tour, rng);
-        seed = rng();
-        return tour;
-    }
-
     [[nodiscard]] std::unordered_set<nodeid_t> GetDistinctNodes(const TspInputGraphDescriptor &graph) {
         std::unordered_set<nodeid_t> nodes{};
         for (size_t i = 0; i < graph.num_edges; ++i) {
@@ -154,6 +141,51 @@ namespace {
             std::cout << "|" << std::endl;
         }
         printHeader();
+    }
+
+    [[nodiscard]] std::vector<node_cost_idx> GetNearestNeighborTour(const std::unordered_set<node_cost_idx> &nodes_set, const CostMatrix &cost_matrix, uint64_t &seed) {
+
+        std::vector<node_cost_idx> all_nodes{};
+        all_nodes.reserve(nodes_set.size());
+        for (const auto &node: nodes_set) {
+            all_nodes.push_back(node);
+        }
+
+        std::vector<node_cost_idx> tour{};
+        tour.reserve(nodes_set.size());
+
+        node_cost_idx starting_point;
+
+        // pick random starting point
+        {
+            std::mt19937_64 rng(seed);
+            std::uniform_int_distribution<size_t> dist(0, all_nodes.size() - 1);
+            starting_point = all_nodes[dist(rng)];
+            seed = rng();
+        }
+
+        tour.push_back(starting_point);
+
+        // build the tour
+        while (tour.size() < all_nodes.size()) {
+            const node_cost_idx last_node = tour.back();
+            cost_t min_cost = COST_POSITIVE_INFINITY;
+            node_cost_idx nearest_node = -1;
+            for (const auto &node: all_nodes) {
+                if (std::ranges::find(tour, node) != tour.end()) {
+                    continue;
+                }
+                const cost_t cost = cost_matrix.get_cost(last_node, node);
+                if (cost < min_cost) {
+                    min_cost = cost;
+                    nearest_node = node;
+                }
+            }
+            assert(nearest_node != -1);
+            tour.push_back(nearest_node);
+        }
+
+        return tour;
     }
 
     PACKED(struct node_pair_t {
@@ -473,7 +505,7 @@ TSP_EXPORT TSPStatus tspSolveAsymmetric(const TspInputGraphDescriptor *graph,
         idx_to_id[idx] = id;
     }
 
-    std::vector<node_cost_idx> current_tour = ::GenerateRandomTour(remapped_nodes, seed);
+    std::vector<node_cost_idx> current_tour = ::GetNearestNeighborTour(remapped_nodes, cost_matrix, seed);
 
     cost_t current_cost = ComputeTourCost(current_tour, cost_matrix);
 

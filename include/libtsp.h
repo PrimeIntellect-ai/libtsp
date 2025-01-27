@@ -74,31 +74,56 @@ typedef struct TspOutputGraphDescriptor {
     cost_t solution_cost{};
 } TspOutputGraphDescriptor;
 
+/**
+ * A simple enum for choosing the initial-constructive heuristic.
+ */
+typedef enum TspInitialHeuristic {
+    TSP_INIT_RANDOM = 0,
+    TSP_INIT_NEAREST_NEIGHBOR = 1
+} TspInitialHeuristic;
+
+/**
+ * Solver configuration descriptor.
+ */
 typedef struct TspSolverConfigurationDescriptor {
     /**
-     * The seed for the random number generator.
+     * The seed for the random number generator (if needed).
      */
     uint64_t seed{};
 
     /**
-     * The number of iterations to run the solver for.
+     * The number of iterations to run the local search.
      */
     uint64_t num_iterations = 1000;
 
     /**
      * The number of iterations that tabu records are retained.
-     * After this number of iterations, an applicable move will be allowed again for consideration.
      */
     uint32_t tabu_tenure = 10;
 
+    /**
+     * The number of times to restart from a new initial solution.
+     * We keep the best solution across all restarts.
+     */
+    uint32_t num_restarts = 1;
+
+    /**
+     * Which initial heuristic to use (random or nearest-neighbor).
+     */
+    TspInitialHeuristic initial_heuristic = TSP_INIT_NEAREST_NEIGHBOR;
+
+    /**
+     * Whether to run 3-Opt after 2-Opt each iteration.
+     * If false, only 2-Opt steps are performed.
+     */
+    bool enable_3opt = true;
 } TspSolverOptionsDescriptor;
 
 /**
- * Solves the asymmetrical TSP problem for the given graph. The solution may not be optimal for large n.
- * For the asymmetric TSP, there may be two edges between a pair of nodes, one in each direction (meaning to and from switched), with potentially different costs.
+ * Solves the asymmetrical TSP problem for the given graph.
  * @param graph the input graph
  * @param solver_options options to configure the solver
- * @param output_descriptor the output descriptor to write the solution to; The user is responsible for freeing the path array.
+ * @param output_descriptor the output descriptor to write the solution to
  * @return the result status of the operation
  */
 TSP_EXPORT TSPStatus tspSolveAsymmetric(const TspInputGraphDescriptor *graph,
@@ -106,11 +131,12 @@ TSP_EXPORT TSPStatus tspSolveAsymmetric(const TspInputGraphDescriptor *graph,
                                         TspOutputGraphDescriptor *output_descriptor);
 
 /**
- * Solves the symmetrical TSP problem for the given graph. The solution may not be optimal for large n.
+ * Solves the symmetrical TSP problem for the given graph.
  * @param graph the input graph
  * @param solver_options options to configure the solver
- * @param output_descriptor the output descriptor to write the solution to; The user is responsible for freeing the path array.
+ * @param output_descriptor the output descriptor to write the solution to
  * @return the result status of the operation
  */
-TSP_EXPORT TSPStatus tspSolveSymmetric(const TspInputGraphDescriptor *graph, const TspSolverOptionsDescriptor *
-                                       solver_options, TspOutputGraphDescriptor *output_descriptor);
+TSP_EXPORT TSPStatus tspSolveSymmetric(const TspInputGraphDescriptor *graph,
+                                       const TspSolverOptionsDescriptor *solver_options,
+                                       TspOutputGraphDescriptor *output_descriptor);
