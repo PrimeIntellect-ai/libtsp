@@ -15,8 +15,9 @@ typedef enum TSPResult {
     TSP_STATUS_SUCCESS = 0, /**< Operation completed successfully. */
     TSP_STATUS_ERROR_INVALID_GRAPH = 1, /**< The input graph is invalid. */
     TSP_STATUS_ERROR_INVALID_ARG = 2, /**< Invalid argument provided. */
-    TSP_STATUS_OUT_OF_MEMORY = 3, /**< Out of memory. */
-    TSP_STATUS_ERROR_INTERNAL = 4 /**< An internal error occurred. */
+    TSP_STATUS_NO_SOLUTION = 3, /**< No solution exists for the given input. */
+    TSP_STATUS_OUT_OF_MEMORY = 4, /**< Out of memory. */
+    TSP_STATUS_ERROR_INTERNAL = 5 /**< An internal error occurred. */
 } TSPStatus;
 
 typedef float cost_t;
@@ -57,7 +58,32 @@ typedef struct TspInputGraphDescriptor {
     size_t num_edges{};
 } TspInputGraphDescriptor;
 
-typedef struct TspOutputGraphDescriptor {
+/**
+ * The type of solution returned by the solver
+ */
+typedef enum TspSolutionType {
+    /**
+     * The solution is optimal.
+     */
+    TSP_SOLUTION_TYPE_OPTIMAL = 0,
+
+    /**
+     * The solution is approximate.
+     */
+    TSP_SOLUTION_TYPE_APPROXIMATE = 1,
+
+    /**
+     * When requesting an improved solution, whether the solution was actually improved.
+     */
+    TSP_SOLUTION_TYPE_IMPROVED = 2,
+
+    /**
+     * When requesting an improved solution, whether the solution could not be improved.
+     */
+    TSP_SOLUTION_TYPE_NO_IMPROVEMENT = 3
+} TspSolutionType;
+
+typedef struct TspSolutionDescriptor {
     /**
      * The path that represents the solution to the TSP problem. The path is represented as an array of node IDs.
      */
@@ -65,13 +91,22 @@ typedef struct TspOutputGraphDescriptor {
 
     /**
      * The number of elements in the path array.
+     * Num nodes will be equal to the number of nodes in the graph for a valid solution.
+     * An implicit wrap-around edge is assumed from tour[n-1] to tour[0].
      */
     size_t num_nodes{};
 
     /**
      * The cost of the solution. Must be non-negative.
+     * The returned cost will be the sum of the costs of the edges in the path including the
+     * final inferred wrap-around edge from tour[n-1] to tour[0].
      */
     cost_t solution_cost{};
+
+    /**
+     * The type of the solution.
+     */
+    TspSolutionType solution_type{};
 } TspSolutionDescriptor;
 
 /**
@@ -89,7 +124,17 @@ typedef enum TspInitialHeuristic {
  */
 typedef struct TspSolverConfigurationDescriptor {
     /**
-     * The seed for the random number generator (if needed).
+     * Whether to attempt to find an exact solution.
+     */
+    bool attempt_exact = true;
+
+    /**
+     * Upper bound for the number of nodes in the graph for which an exact solution is attempted.
+     */
+    size_t exact_upper_bound = 16;
+
+    /**
+     * The seed for the random number generator
      */
     uint64_t seed{};
 
@@ -134,35 +179,25 @@ typedef struct TspSolverConfigurationDescriptor {
 } TspSolverOptionsDescriptor;
 
 /**
- * Solves the asymmetrical TSP problem for the given graph.
+ * Solves the asymmetrical TSP problem for the given graph in an exact manner or heuristically depending on configuration and problem size.
  * @param graph the input graph
  * @param solver_options options to configure the solver
  * @param output_descriptor the output descriptor to write the solution to
  * @return the result status of the operation
  */
-TSP_EXPORT TSPStatus tspSolveAsymmetric(const TspInputGraphDescriptor *graph,
+TSP_EXPORT TSPStatus tspAsymmetricSolve(const TspInputGraphDescriptor *graph,
                                         const TspSolverOptionsDescriptor *solver_options,
                                         TspSolutionDescriptor *output_descriptor);
 
 /**
- * Improves upon an existing solution provided for an asymmetrical TSP problem.
+ * Improves upon an existing solution provided for an asymmetrical TSP problem in an exact manner or heuristically depending on configuration and problem size.
  * @param graph the input graph
  * @param initial_solution the initial solution to improve upon
  * @param solver_options options to configure the solver
  * @param output_descriptor the output descriptor to write the solution to
  * @return the result status of the operation
  */
-TSP_EXPORT TSPStatus tspImproveSolutionAsymmetric(const TspInputGraphDescriptor *graph,
+TSP_EXPORT TSPStatus tspAsymmetricImproveSolution(const TspInputGraphDescriptor *graph,
                                                   const TspSolutionDescriptor *initial_solution,
                                                   const TspSolverOptionsDescriptor *solver_options,
                                                   TspSolutionDescriptor *output_descriptor);
-
-/**
- * Solves the symmetrical TSP problem for the given graph.
- * @param graph the input graph
- * @param solver_options options to configure the solver
- * @param output_descriptor the output descriptor to write the solution to
- */
-TSP_EXPORT TSPStatus tspSolveSymmetric(const TspInputGraphDescriptor *graph,
-                                       const TspSolverOptionsDescriptor *solver_options,
-                                       TspOutputGraphDescriptor *output_descriptor);

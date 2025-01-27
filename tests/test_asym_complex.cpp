@@ -59,7 +59,7 @@ TEST(TspSolverJsonTest, CompareCosts) {
         TspSolverOptionsDescriptor solver_options{.seed = 0, .num_iterations = 10};
 
         auto start = std::chrono::high_resolution_clock::now();
-        TSPStatus status = tspSolveAsymmetric(&input_desc, &solver_options, &output_desc);
+        TSPStatus status = tspAsymmetricSolve(&input_desc, &solver_options, &output_desc);
         auto end = std::chrono::high_resolution_clock::now();
 
         EXPECT_EQ(status, TSP_STATUS_SUCCESS) << "Solver did not return SUCCESS for instance: " << description;
