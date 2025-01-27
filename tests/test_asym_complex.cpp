@@ -56,7 +56,7 @@ TEST(TspSolverJsonTest, CompareCosts) {
 
         // Solve using tsp_solve
         TspSolutionDescriptor output_desc{};
-        TspSolverOptionsDescriptor solver_options{.seed = 0, .num_iterations = 10};
+        TspSolverOptionsDescriptor solver_options{.seed = 0, .num_iterations = 100};
 
         auto start = std::chrono::high_resolution_clock::now();
         TSPStatus status = tspAsymmetricSolve(&input_desc, &solver_options, &output_desc);
