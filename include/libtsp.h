@@ -72,14 +72,16 @@ typedef struct TspOutputGraphDescriptor {
      * The cost of the solution. Must be non-negative.
      */
     cost_t solution_cost{};
-} TspOutputGraphDescriptor;
+} TspSolutionDescriptor;
 
 /**
  * A simple enum for choosing the initial-constructive heuristic.
  */
 typedef enum TspInitialHeuristic {
     TSP_INIT_RANDOM = 0,
-    TSP_INIT_NEAREST_NEIGHBOR = 1
+    TSP_INIT_NEAREST_NEIGHBOR = 1,
+    TSP_INIT_ANT_COLONY_OPTIMIZATION = 2,
+    TSP_INIT_CHOOSE_BEST_INITIAL_SCORE = 3
 } TspInitialHeuristic;
 
 /**
@@ -99,24 +101,36 @@ typedef struct TspSolverConfigurationDescriptor {
     /**
      * The number of iterations that tabu records are retained.
      */
-    uint32_t tabu_tenure = 10;
+    uint32_t tabu_tenure = 5;
 
     /**
      * The number of times to restart from a new initial solution.
      * We keep the best solution across all restarts.
+     * For each restart, num_iterations are performed.
+     * Only meaningful with non-deterministic initialization heuristic.
      */
     uint32_t num_restarts = 1;
 
     /**
-     * Which initial heuristic to use (random or nearest-neighbor).
+     * Which initial heuristic to use (random, nearest neighbor, or ant colony optimization).
      */
     TspInitialHeuristic initial_heuristic = TSP_INIT_NEAREST_NEIGHBOR;
 
     /**
-     * Whether to run 3-Opt after 2-Opt each iteration.
-     * If false, only 2-Opt steps are performed.
+     * Number of ants to use in the ant colony optimization heuristic.
+     * Only applicable if initial_heuristic is TSP_INIT_ANT_COLONY.
+     */
+    uint32_t ant_colony_num_samples = 2048;
+
+    /**
+     * Whether to perform 3-Opt moves during the local search.
      */
     bool enable_3opt = true;
+
+    /**
+     * Whether to perform 4-Opt moves during the local search.
+     */
+    bool enable_4opt = false;
 } TspSolverOptionsDescriptor;
 
 /**
@@ -128,14 +142,26 @@ typedef struct TspSolverConfigurationDescriptor {
  */
 TSP_EXPORT TSPStatus tspSolveAsymmetric(const TspInputGraphDescriptor *graph,
                                         const TspSolverOptionsDescriptor *solver_options,
-                                        TspOutputGraphDescriptor *output_descriptor);
+                                        TspSolutionDescriptor *output_descriptor);
+
+/**
+ * Improves upon an existing solution provided for an asymmetrical TSP problem.
+ * @param graph the input graph
+ * @param initial_solution the initial solution to improve upon
+ * @param solver_options options to configure the solver
+ * @param output_descriptor the output descriptor to write the solution to
+ * @return the result status of the operation
+ */
+TSP_EXPORT TSPStatus tspImproveSolutionAsymmetric(const TspInputGraphDescriptor *graph,
+                                                  const TspSolutionDescriptor *initial_solution,
+                                                  const TspSolverOptionsDescriptor *solver_options,
+                                                  TspSolutionDescriptor *output_descriptor);
 
 /**
  * Solves the symmetrical TSP problem for the given graph.
  * @param graph the input graph
  * @param solver_options options to configure the solver
  * @param output_descriptor the output descriptor to write the solution to
- * @return the result status of the operation
  */
 TSP_EXPORT TSPStatus tspSolveSymmetric(const TspInputGraphDescriptor *graph,
                                        const TspSolverOptionsDescriptor *solver_options,

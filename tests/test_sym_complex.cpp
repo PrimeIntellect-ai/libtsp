@@ -55,7 +55,7 @@ TEST(TspSolverJsonTest, CompareCosts) {
         }
 
         // Solve using tsp_solve
-        TspOutputGraphDescriptor outputDesc{};
+        TspSolutionDescriptor outputDesc{};
         TSPStatus status = tspSolveSymmetric(&inputDesc, {}, &outputDesc);
         EXPECT_EQ(status, TSP_STATUS_SUCCESS) << "Solver did not return SUCCESS for instance: " << description;
 

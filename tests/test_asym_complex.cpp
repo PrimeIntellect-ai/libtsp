@@ -55,9 +55,13 @@ TEST(TspSolverJsonTest, CompareCosts) {
         }
 
         // Solve using tsp_solve
-        TspOutputGraphDescriptor output_desc{};
-        TspSolverOptionsDescriptor solver_options{.num_iterations = 1000};
-        TSPStatus status = tspSolveAsymmetric(&input_desc,  &solver_options, &output_desc);
+        TspSolutionDescriptor output_desc{};
+        TspSolverOptionsDescriptor solver_options{.seed = 0, .num_iterations = 10};
+
+        auto start = std::chrono::high_resolution_clock::now();
+        TSPStatus status = tspSolveAsymmetric(&input_desc, &solver_options, &output_desc);
+        auto end = std::chrono::high_resolution_clock::now();
+
         EXPECT_EQ(status, TSP_STATUS_SUCCESS) << "Solver did not return SUCCESS for instance: " << description;
 
         // Compare with known-good solution
@@ -94,11 +98,18 @@ TEST(TspSolverJsonTest, CompareCosts) {
                     }
                 }
             }
-            EXPECT_NEAR(pathCost, output_desc.solution_cost, 1e-6) << "Path cost mismatch for instance: " << description;
+            EXPECT_NEAR(pathCost, output_desc.solution_cost, 1e-6) << "Path cost mismatch for instance: " <<
+ description;
         }
 
         // assert that the cost is within 5% of the known-good solution
-        EXPECT_NEAR(output_desc.solution_cost, solution_cost, 0.05 * solution_cost) << "Cost mismatch for instance: " << description;
+        EXPECT_NEAR(output_desc.solution_cost, solution_cost, 0.05 * solution_cost) << "Cost mismatch for instance: " <<
+ description;
+
+        std::cout << "Solved \"" << description << "\" with error: " << std::abs(output_desc.solution_cost - solution_cost) << " ("
+                << std::fixed << std::setprecision(2) <<
+                std::abs(output_desc.solution_cost - solution_cost) / solution_cost * 100 << "%)" << " in "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
 
         // Cleanup
         delete[] input_desc.edges;
