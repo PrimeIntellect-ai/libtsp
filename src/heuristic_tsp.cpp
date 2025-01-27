@@ -1,6 +1,8 @@
+#include "libtsp.h"
+
+#include <memory>
 #include <cassert>
 #include <iomanip>
-#include <libtsp.h>
 #include <random>
 #include <unordered_set>
 #include <vector>
