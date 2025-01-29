@@ -1,6 +1,6 @@
 # libtsp
 
-An exact & heuristic TSP solver written in C++.
+An exact or heuristic TSP solver written in C++.
 
 ## Example usage
 
