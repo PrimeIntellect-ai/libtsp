@@ -674,7 +674,7 @@ TSPStatus tspAsymmetricImproveSolutionHeuristic(const TspInputGraphDescriptor *g
     cost_t initial_cost = COST_POSITIVE_INFINITY;
 
     if (initial_solution != nullptr) {
-        initial_cost = initial_solution->solution_cost;
+        initial_cost = ComputeTourCost(initial_tour, cost_matrix);
         initial_tour.reserve(initial_solution->num_nodes);
         for (size_t i = 0; i < initial_solution->num_nodes; ++i) {
             initial_tour.push_back(id_to_idx.at(initial_solution->tour[i]));
