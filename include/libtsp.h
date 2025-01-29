@@ -229,3 +229,9 @@ TSP_EXPORT TSPStatus tspAsymmetricImproveSolution(const TspInputGraphDescriptor 
                                                   const TspSolutionDescriptor *initial_solution,
                                                   const TspSolverOptionsDescriptor *solver_options,
                                                   TspSolutionDescriptor *output_descriptor);
+
+/**
+ * Frees the memory associated with a solution descriptor.
+ * @param solution the solution descriptor to dispose
+ */
+TSP_EXPORT void tspDisposeSolution(const TspSolutionDescriptor *solution);

@@ -106,3 +106,28 @@ TSPStatus tspAsymmetricSolve(const TspInputGraphDescriptor *graph,
     // fall back to heuristic solution
     return tspAsymmetricImproveSolutionHeuristic(graph, nullptr, solver_options, output_descriptor);
 }
+
+TSPStatus tspAsymmetricImproveSolution(const TspInputGraphDescriptor *graph,
+                                       const TspSolutionDescriptor *initial_solution,
+                                       const TspSolverOptionsDescriptor *solver_options,
+                                       TspSolutionDescriptor *output_descriptor) {
+    if (graph == nullptr || output_descriptor == nullptr || solver_options == nullptr) {
+        return TSP_STATUS_ERROR_INVALID_ARG;
+    }
+    if (graph->edges == nullptr || graph->num_edges == 0) {
+        return TSP_STATUS_ERROR_INVALID_ARG;
+    }
+    if (const auto status = ::ValidateAsymmetricGraph(*graph); status != TSP_STATUS_SUCCESS) {
+        return status;
+    }
+
+    const std::unordered_set<nodeid_t> distinct_nodes = GetDistinctNodes(*graph);
+    if (solver_options->attempt_exact && distinct_nodes.size() < solver_options->exact_upper_bound) {
+        return tspAsymmetricSolveExact(graph, output_descriptor);
+    }
+    return tspAsymmetricImproveSolutionHeuristic(graph, initial_solution, solver_options, output_descriptor);
+}
+
+void tspDisposeSolution(const TspSolutionDescriptor *solution) {
+    delete[] solution->tour;
+}
