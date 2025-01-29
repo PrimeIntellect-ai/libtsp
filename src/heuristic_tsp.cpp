@@ -16,8 +16,6 @@
 #define FORCE_INLINE inline __forceinline
 #endif
 
-#define TSP_IS_DEBUG
-
 /// Represents an index into the cost array where a particular node is located
 typedef std::ptrdiff_t node_cost_idx;
 
@@ -680,6 +678,7 @@ TSPStatus tspAsymmetricImproveSolutionHeuristic(const TspInputGraphDescriptor *g
     }
 
     uint32_t num_restarts = std::max(1u, solver_options->num_restarts);
+    auto start = std::chrono::high_resolution_clock::now();
     for (size_t restart = 0; restart < num_restarts; restart++) {
         std::vector<node_cost_idx> current_tour;
         cost_t current_cost;
@@ -693,6 +692,7 @@ TSPStatus tspAsymmetricImproveSolutionHeuristic(const TspInputGraphDescriptor *g
             };
             std::uniform_int_distribution<size_t> dist(0, 2);
             chosen_heuristic = available_heuristics[dist(rng)];
+
             seed = rng();
         }
         switch (chosen_heuristic) {
@@ -1018,6 +1018,14 @@ TSPStatus tspAsymmetricImproveSolutionHeuristic(const TspInputGraphDescriptor *g
                     } else {
                         ++it;
                     }
+                }
+            }
+
+            if (solver_options->time_limit_ms != UINT64_MAX) {
+                auto now = std::chrono::high_resolution_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
+                if (elapsed >= solver_options->time_limit_ms) {
+                    break;
                 }
             }
         }

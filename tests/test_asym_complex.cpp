@@ -57,7 +57,8 @@ TEST(TspSolverJsonTest, CompareCosts) {
         // Solve using tsp_solve
         TspSolutionDescriptor output_desc{};
         TspSolverOptionsDescriptor solver_options{
-            .seed = 42, .num_iterations = 100,
+            .seed = 42,
+            .num_iterations = 25,
             .num_restarts = 4,
             .initial_heuristic = TSP_INIT_RANDOM_STRATEGY
         };

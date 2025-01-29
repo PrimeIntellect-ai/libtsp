@@ -113,7 +113,6 @@ typedef struct TspSolutionDescriptor {
  * A simple enum for choosing the initial-constructive heuristic.
  */
 typedef enum TspInitialHeuristic {
-
     /**
      * Uses a random initial solution.
      */
@@ -176,6 +175,14 @@ typedef struct TspSolverConfigurationDescriptor {
      * Only meaningful with non-deterministic initialization heuristic.
      */
     uint32_t num_restarts = 1;
+
+    /**
+     * The time limit in milliseconds for the solver to run.
+     * If the time limit is reached, the solver will return the best solution found so far even if
+     * the specified number of iterations or restarts have not been completed.
+     * If the time limit is UINT64_MAX, the solver will run to completion (all starts & max iterations per restart).
+     */
+    uint64_t time_limit_ms = UINT64_MAX;
 
     /**
      * Which initial heuristic to use (random, nearest neighbor, or ant colony optimization).
