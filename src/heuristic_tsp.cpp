@@ -668,15 +668,20 @@ TSPStatus tspAsymmetricImproveSolutionHeuristic(const TspInputGraphDescriptor *g
     }
 
     std::vector<node_cost_idx> best_tour{};
-    cost_t best_cost = COST_POSITIVE_INFINITY;
+    std::vector<node_cost_idx> initial_tour{};
+
+    cost_t best_cost{};
     cost_t initial_cost = COST_POSITIVE_INFINITY;
+
     if (initial_solution != nullptr) {
-        best_cost = initial_cost = initial_solution->solution_cost;
-        best_tour.reserve(initial_solution->num_nodes);
+        initial_cost = initial_solution->solution_cost;
+        initial_tour.reserve(initial_solution->num_nodes);
         for (size_t i = 0; i < initial_solution->num_nodes; ++i) {
-            best_tour.push_back(id_to_idx.at(initial_solution->tour[i]));
+            initial_tour.push_back(id_to_idx.at(initial_solution->tour[i]));
         }
     }
+    best_tour = initial_tour;
+    best_cost = initial_cost;
 
     uint32_t num_restarts = std::max(1u, solver_options->num_restarts);
     auto start = std::chrono::high_resolution_clock::now();
@@ -686,12 +691,15 @@ TSPStatus tspAsymmetricImproveSolutionHeuristic(const TspInputGraphDescriptor *g
         TspInitialHeuristic chosen_heuristic = solver_options->initial_heuristic;
         if (chosen_heuristic == TSP_INIT_RANDOM_STRATEGY) {
             std::mt19937_64 rng(seed);
-            TspInitialHeuristic available_heuristics[] = {
+            std::vector available_heuristics = {
                 TSP_INIT_RANDOM,
                 TSP_INIT_NEAREST_NEIGHBOR,
                 TSP_INIT_ANT_COLONY_OPTIMIZATION,
             };
-            std::uniform_int_distribution<size_t> dist(0, 2);
+            if (initial_solution != nullptr) {
+                available_heuristics.push_back(TSP_INIT_USE_PROVIDED_SOLUTION);
+            }
+            std::uniform_int_distribution<size_t> dist(0, available_heuristics.size() - 1);
             chosen_heuristic = available_heuristics[dist(rng)];
 
             seed = rng();
@@ -732,6 +740,14 @@ TSPStatus tspAsymmetricImproveSolutionHeuristic(const TspInputGraphDescriptor *g
                     current_tour = ant_colony_tour;
                     current_cost = ant_colony_cost;
                 }
+                break;
+            }
+            case TSP_INIT_USE_PROVIDED_SOLUTION: {
+                if (initial_solution == nullptr) {
+                    return TSP_STATUS_ERROR_INVALID_ARG;
+                }
+                current_tour = initial_tour;
+                current_cost = initial_cost;
                 break;
             }
             default: {

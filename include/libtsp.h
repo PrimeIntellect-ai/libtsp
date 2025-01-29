@@ -134,9 +134,15 @@ typedef enum TspInitialHeuristic {
     TSP_INIT_CHOOSE_BEST_INITIAL_SCORE = 3,
 
     /**
-     * Will initialize the solution using a random strategy (nearest neighbor, ant colony optimization, or random with equal probability).
+     * Use the initial solution provided by the user.
+     * Applies only when improving an existing solution.
      */
-    TSP_INIT_RANDOM_STRATEGY = 4
+    TSP_INIT_USE_PROVIDED_SOLUTION = 4,
+
+    /**
+     * Will initialize the solution using a random strategy (nearest neighbor, ant colony optimization, user provided solution (if applicable), or random with equal probability).
+     */
+    TSP_INIT_RANDOM_STRATEGY = 5
 } TspInitialHeuristic;
 
 /**
