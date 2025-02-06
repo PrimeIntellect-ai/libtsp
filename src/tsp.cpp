@@ -41,9 +41,7 @@ struct [[maybe_unused]] std::hash<node_pair_t> {
 };
 
 /// Validate that the graph is a valid asymmetric graph.
-/// A valid asymmetric graph must have at least one edge between each pair of nodes.
-/// There may be a second edge connecting the same nodes in the opposite direction with a different cost.
-/// Costs may not be negative.
+/// Costs may not be negative. There may be no duplicate edges spanning in the same direction.
 /// It also may not contain self-loops.
 TSPStatus ValidateAsymmetricGraph(const TspInputGraphDescriptor &graph) {
     if (graph.num_edges < 2) {
@@ -63,23 +61,6 @@ TSPStatus ValidateAsymmetricGraph(const TspInputGraphDescriptor &graph) {
         const auto &[_, changed] = edges.emplace(node_pair_t{from, to});
         if (!changed) {
             return TSP_STATUS_ERROR_INVALID_GRAPH;
-        }
-    }
-
-    // check that for every pair (a, b), at least one direction is present
-    {
-        const std::unordered_set<nodeid_t> distinct_nodes = GetDistinctNodes(graph);
-        for (const auto &a: distinct_nodes) {
-            for (const auto &b: distinct_nodes) {
-                if (a == b) {
-                    continue;
-                }
-                const node_pair_t pair_1{a, b};
-                const node_pair_t pair_2{b, a};
-                if (!edges.contains(pair_1) && !edges.contains(pair_2)) {
-                    return TSP_STATUS_ERROR_INVALID_GRAPH;
-                }
-            }
         }
     }
     return TSP_STATUS_SUCCESS;
