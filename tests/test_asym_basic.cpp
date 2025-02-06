@@ -113,7 +113,7 @@ TEST(TspSolverTest, DisconnectedThreeNodes) {
     TspInputGraphDescriptor graph = createGraph(inputEdges);
     TspSolutionDescriptor outputDesc{};
     constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
-    EXPECT_EQ(tspAsymmetricSolve(&graph, &optionsDesc, &outputDesc), TSP_STATUS_ERROR_INVALID_GRAPH);
+    EXPECT_EQ(tspAsymmetricSolve(&graph, &optionsDesc, &outputDesc), TSP_STATUS_NO_SOLUTION);
 
     freeOutput(outputDesc);
     freeGraph(graph);
@@ -174,7 +174,7 @@ TEST(TspSolverTest, LargerNoSolution) {
     TspInputGraphDescriptor graph = createGraph(inputEdges);
     TspSolutionDescriptor outputDesc{};
     constexpr TspSolverOptionsDescriptor optionsDesc{.seed = 42, .num_iterations = 100};
-    EXPECT_EQ(tspAsymmetricSolve(&graph, &optionsDesc, &outputDesc), TSP_STATUS_ERROR_INVALID_GRAPH);
+    EXPECT_EQ(tspAsymmetricSolve(&graph, &optionsDesc, &outputDesc), TSP_STATUS_NO_SOLUTION);
 
     freeOutput(outputDesc);
     freeGraph(graph);
